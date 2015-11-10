@@ -12,11 +12,11 @@
 #include <dirent.h>
 #include "logger.c"
 #define FORMAT "copy"
-#define PATH_SIZE 512
-#define SIZE 512
+#define PATH_SIZE 4096
+#define SIZE 4096
 int fdin, fdout;
 struct stat statbuf;
-char out_dir[PATH_SIZE] = "./";
+char out_dir[PATH_SIZE] = "";
 char in_filename[SIZE], out_filename[SIZE];
 char buffer[SIZE];
 
@@ -31,9 +31,11 @@ int set_dir(char *object, int mode) {
     strcat(out_dir, FORMAT);
     strcat(out_dir, "/");
     if (mkdir(out_dir, mode) < 0) {
+        log_add(FATAL, "Can't create directory %s\n", out_dir);
         return errno;
     }
-   
+   // log_add(DEBUGGING, "Created dir%s\n", out_dir);
+    
     return 0;
 }
 
@@ -58,35 +60,23 @@ int prev_dir(void) {
 
 char *get_filename(char *path) {
     unsigned long int curr;
-
+    
+  //  log_add(DEBUGGING, "Path is %s\n", path);
     curr = strlen(path);
     while(curr > 0) {
         curr--;
+      //  log_add(DEBUGGING, "path[curr] is %c\n", path[curr]);
         if (path[curr] == '/') {
             return path + curr + 1;
+            break;
         }
     }
-    
-    return path;
-}
-
-char *get_dir_name(char *path) {
-    unsigned long int curr;
-    
-    curr = strlen(path);
-    while(curr > 0) {
-        curr--;
-        if (path[curr] == '/') {
-            return path + curr;
-        }
-    }
+   // log_add(DEBUGGING, "file is %s\n", path);
     
     return path;
 }
 
 int process_path(char *in_path, char *out_path) {
-    memset(in_filename, '\0', SIZE);
-    memset(out_filename, '\0', SIZE);
     strcpy(in_filename, in_path);
     strcpy(out_filename, out_path);
     //log_add(DEBUGGING, "in %s\n", in_filename);
@@ -98,13 +88,13 @@ int process_path(char *in_path, char *out_path) {
 
 int copy_file(char *in_path, char *out_path) {
       ssize_t c;
-    //log_add(DEBUGGING, "In copy_file\n");
+   // log_add(DEBUGGING, "In copy_file\n");
     process_path(in_path, out_path);
     strcat(out_filename, FORMAT);
    // log_add(DEBUGGING, "out %s\n", out_filename);
     
     if ((fdin = open(in_filename, O_RDONLY)) < 0) {
-       // log_add(FATAL, "Can't open input file\n");
+        //log_add(FATAL, "Can't open input file\n");
         return errno;
     }
     
@@ -114,13 +104,13 @@ int copy_file(char *in_path, char *out_path) {
     }
     
     if  ((fdout = open(out_filename, O_RDWR | O_CREAT | O_TRUNC | O_APPEND, statbuf.st_mode)) < 0 ) {
-       // log_add(FATAL, "Can't create output file\n");
+        //log_add(FATAL, "Can't create output file\n");
         return errno;
     }
     
     while((c = read(fdin, buffer, SIZE)) > 0) {
         if (write(fdout, buffer, c) < 0) {
-          //  log_add(FATAL, "Writing failed\n");
+           // log_add(FATAL, "Writing failed\n");
             return errno;
         }
     }
@@ -128,7 +118,7 @@ int copy_file(char *in_path, char *out_path) {
     return 0;
 }
 
-int copy(char *in_object) {
+int copy(const char *in_object) {
     
     char object[PATH_SIZE];
     
@@ -151,9 +141,9 @@ int copy(char *in_object) {
         set_dir(get_filename(object), buf.st_mode);
         
         while ((entry = readdir(dir)) != NULL) {
-           // log_add(DEBUGGING, "In while\n");
+          //  log_add(DEBUGGING, "In while\n");
            // log_add(DEBUGGING, "object is %s\n", object);
-          //  log_add(DEBUGGING, "file %s\n", entry->d_name);
+            //log_add(DEBUGGING, "file %s\n", entry->d_name);
             if (is_good_file(entry->d_name)) {
                 
                 strcat(object, "/");
@@ -168,7 +158,7 @@ int copy(char *in_object) {
         prev_dir();
     }
     else {
-       
+      //  log_add(DEBUGGING, "It's file: %s\n", object);
         copy_file(object, curr_out_dir());
     }
     
@@ -180,6 +170,7 @@ int main(int argc, const char * argv[]) {
     if (argc <= 1) {
         return 0;
     }
+    log_add(DEBUGGING, "Copy %s\n", argv[1]);
     copy(argv[1]);
     return 0;
 }
