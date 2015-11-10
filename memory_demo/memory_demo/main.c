@@ -2,27 +2,31 @@
 //  main.c
 //  memory_demo
 //
-//  Created by Jenny on 07.10.15.
+//  Created by Stasia on 07.10.15.
 //  Copyright © 2015 com.mipt. All rights reserved.
 //
 
 #include <stdio.h>
+#include <sys/mman.h>
+#include <errno.h>
 #include <math.h>
-#define SIZE 10000
+#include <unistd.h>
+#define SIZE 10000000000000
 
-volatile double big_data[SIZE][SIZE][SIZE];
+volatile double *big_data;
 
 int main(int argc, const char * argv[]) {
-    int i, j, k;
+    long int i;
     
-    for (i = 0; i < SIZE; i++) {
-        for (j = 0; j < SIZE; j++) {
-            for (k = 0; k < SIZE; k++) {
-                big_data[i][j][k] = MAXFLOAT;
-            }
-        }
+    if ((big_data = mmap(0, SIZE*sizeof(double), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0)) == MAP_FAILED) {
+        return errno;
     }
     
+    for (i = 0; i < SIZE; i++) {
+        big_data[i] = MAXFLOAT;
+    }
+    
+    munmap(big_data, SIZE);
     
     return 0;
 }
